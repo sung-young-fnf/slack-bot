@@ -1,12 +1,22 @@
 import os
 import re
 import asyncio
+from pathlib import Path
 from slack_bolt import App
 
 from collectors.md_collector import collect_md
 from collectors.github_collector import collect_github
 from ai.claude import generate_briefing
 from formatter.block_kit import build_briefing_blocks
+
+CLAUDE_MD_PATH = Path(__file__).parent.parent.parent / "CLAUDE.md"
+
+
+def _read_bot_info() -> str:
+    try:
+        return CLAUDE_MD_PATH.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return ""
 
 
 def register_handlers(app: App):
@@ -24,6 +34,14 @@ def register_handlers(app: App):
         )
         loading_ts = loading_resp["ts"]
 
+        # 브리핑 요청 여부 판단
+        BRIEFING_KEYWORDS = ("브리핑", "할일", "업무", "진행상황")
+        is_briefing = any(kw in text for kw in BRIEFING_KEYWORDS)
+
+        # 스킬/기능 질문 여부 판단
+        SKILL_KEYWORDS = ("스킬", "기능", "소개")
+        bot_info = _read_bot_info() if any(kw in text for kw in SKILL_KEYWORDS) else ""
+
         # 특정 프로젝트 지정 여부 파싱
         project_match = re.search(r"(\S+)\s*브리핑", text)
         target_project = None
@@ -36,7 +54,7 @@ def register_handlers(app: App):
             desktop_path = os.environ.get("DESKTOP_PATH", "")
             projects = await collect_md(desktop_path, target_project)
             projects = await collect_github(projects)
-            briefing_text = await generate_briefing(projects)
+            briefing_text = await generate_briefing(projects, text, bot_info)
             return projects, briefing_text
 
         try:
@@ -44,12 +62,12 @@ def register_handlers(app: App):
             projects, briefing_text = loop.run_until_complete(_run())
             loop.close()
 
-            blocks = build_briefing_blocks(briefing_text, projects)
+            blocks = build_briefing_blocks(briefing_text, projects, is_briefing)
 
             client.chat_update(
                 channel=channel,
                 ts=loading_ts,
-                text="오늘의 개발 브리핑",
+                text=briefing_text[:100] if not is_briefing else "오늘의 개발 브리핑",
                 blocks=blocks,
             )
         except Exception as e:

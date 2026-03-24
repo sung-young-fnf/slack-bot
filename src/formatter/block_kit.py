@@ -1,21 +1,22 @@
-def build_briefing_blocks(briefing_text: str, projects: list[dict]) -> list[dict]:
+def build_briefing_blocks(briefing_text: str, projects: list[dict], is_briefing: bool = True) -> list[dict]:
     blocks = []
 
     # Header
+    header_text = "오늘의 개발 브리핑" if is_briefing else "AI Agent"
     blocks.append({
         "type": "header",
-        "text": {"type": "plain_text", "text": "오늘의 개발 브리핑", "emoji": True}
+        "text": {"type": "plain_text", "text": header_text, "emoji": True}
     })
     blocks.append({"type": "divider"})
 
-    # AI 브리핑 텍스트
+    # AI 응답 텍스트
     for chunk in _split_text(briefing_text, 3000):
         blocks.append({
             "type": "section",
             "text": {"type": "mrkdwn", "text": chunk}
         })
 
-    if projects:
+    if is_briefing and projects:
         blocks.append({"type": "divider"})
         blocks.append({
             "type": "section",
