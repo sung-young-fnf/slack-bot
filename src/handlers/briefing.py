@@ -47,9 +47,9 @@ def register_handlers(app: App):
         BRIEFING_KEYWORDS = ("브리핑", "할일", "업무", "진행상황")
         is_briefing = any(kw in text for kw in BRIEFING_KEYWORDS)
 
-        # 스킬/기능 질문 여부 판단
-        SKILL_KEYWORDS = ("스킬", "스킬셋", "기능", "소개")
-        bot_info = _read_bot_info() if any(kw in text for kw in SKILL_KEYWORDS) else ""
+        # 봇 소개/기능 질문 여부 판단 (스킬셋 제외 - SKILLSET_INFO는 시스템 프롬프트에 내장됨)
+        BOT_INFO_KEYWORDS = ("기능", "소개")
+        bot_info = _read_bot_info() if any(kw in text for kw in BOT_INFO_KEYWORDS) else ""
 
         # 특정 프로젝트 지정 여부 파싱
         project_match = re.search(r"(\S+)\s*브리핑", text)
