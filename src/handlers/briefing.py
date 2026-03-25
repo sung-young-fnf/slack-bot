@@ -39,7 +39,7 @@ def register_handlers(app: App):
         loading_resp = client.chat_postMessage(
             channel=channel,
             thread_ts=thread_ts,
-            text="브리핑을 준비하고 있습니다... (데이터 수집 중)"
+            text="답변을 준비하고 있습니다..."
         )
         loading_ts = loading_resp["ts"]
 
@@ -48,7 +48,7 @@ def register_handlers(app: App):
         is_briefing = any(kw in text for kw in BRIEFING_KEYWORDS)
 
         # 스킬/기능 질문 여부 판단
-        SKILL_KEYWORDS = ("스킬", "기능", "소개")
+        SKILL_KEYWORDS = ("스킬", "스킬셋", "기능", "소개")
         bot_info = _read_bot_info() if any(kw in text for kw in SKILL_KEYWORDS) else ""
 
         # 특정 프로젝트 지정 여부 파싱
