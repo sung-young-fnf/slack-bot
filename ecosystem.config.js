@@ -5,5 +5,6 @@ module.exports = {
     interpreter: './venv/Scripts/python',
     watch: false,
     restart_delay: 3000,
+    max_restarts: 10,
   }]
 }

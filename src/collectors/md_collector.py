@@ -6,7 +6,7 @@ from pathlib import Path
 TASKS_FILENAME = "TASKS.md"
 
 UNCHECKED = re.compile(r"^[-*]\s+\[ \]\s+(.+)$", re.MULTILINE)
-CHECKED = re.compile(r"^[-*]\s+\[x\]\s+(.+)$", re.MULTILINE | re.IGNORECASE)
+CHECKED = re.compile(r"^[-*]\s+\[x\]\s+(.+?)(?:\s+\((\d{4}-\d{2}-\d{2})\))?\s*$", re.MULTILINE | re.IGNORECASE)
 
 
 def parse_md_file(path: Path) -> dict:
@@ -16,7 +16,7 @@ def parse_md_file(path: Path) -> dict:
         return {}
 
     todos = UNCHECKED.findall(content)
-    done = CHECKED.findall(content)
+    done = [{"text": m[0], "date": m[1] if m[1] else None} for m in CHECKED.findall(content)]
 
     return {"todos": todos, "done": done}
 

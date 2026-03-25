@@ -7,7 +7,7 @@ Desktop의 개발 프로젝트 `.md` 파일과 GitHub Issues/PR을 읽어 Slack 
 - **언어**: Python
 - **Slack SDK**: slack-bolt (Socket Mode)
 - **GitHub SDK**: PyGithub
-- **AI**: anthropic (`claude-sonnet-4-20250514`)
+- **AI**: anthropic (`claude-haiku-4-5-20251001`)
 - **프로세스 관리**: PM2
 
 ## 프로젝트 구조

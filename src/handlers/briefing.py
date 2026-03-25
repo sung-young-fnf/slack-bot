@@ -26,6 +26,15 @@ def register_handlers(app: App):
         thread_ts = event.get("thread_ts") or event["ts"]
         text = re.sub(r"<@[A-Z0-9]+>", "", event.get("text", "")).strip()
 
+        # 텍스트 없이 멘션만 한 경우
+        if not text:
+            client.chat_postMessage(
+                channel=channel,
+                thread_ts=thread_ts,
+                text="안녕하세요! 무엇을 도와드릴까요?😊"
+            )
+            return
+
         # 즉시 로딩 메시지 응답
         loading_resp = client.chat_postMessage(
             channel=channel,
