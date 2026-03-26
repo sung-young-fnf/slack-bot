@@ -3,10 +3,10 @@ from datetime import date, timedelta
 import anthropic
 
 SKILLSET_INFO = """
-AI/LLM 개발 분야에서는 RAG 시스템 설계부터 LLM 프롬프트 엔지니어링 과 같은 AI 서비스 개발이 가능합니다.
-검색 & 데이터 쪽으로는 임베딩 기반 문서 검색 최적화나 PDF 구조화 추출처럼 데이터를 AI가 잘 활용할 수 있는 형태로 가공하는 작업을 다룰 수 있습니다.
-백엔드는 FastAPI 기반으로 AI 서비스 로직을 구현합니다.
-인프라 쪽은 Docker 기반 MSA 구성과 AWS 운영, Firebase/Redis를 활용한 세션 관리 등 AI 서비스를 실제로 배포하고 운영하는 데 필요한 환경을 구성할 수 있습니다.
+AI/LLM 개발 분야는 RAG 시스템과 LLM 프롬프트 엔지니어링을 중심으로 기초적인 AI 서비스 개발이 가능한 초급 수준입니다.
+백엔드 쪽은 FastAPI를 활용한 간단한 API 구현이 가능한 수준입니다.
+프론트엔드는 React를 이용한 기초적인 화면 구성과 백엔드 API 연동 정도가 가능합니다.
+인프라는 Docker와 AWS를 활용해본 정도로, 간단한 배포 환경 구성이 가능한 수준입니다.
 
 기술 스택
 AI/ML: Python, PyTorch
@@ -36,6 +36,7 @@ SYSTEM_PROMPT = f"""당신은 개발자를 위한 Slack AI 어시스턴트입니
 2️⃣ 스킬셋 / 기능 질문인 경우
 
 [매우중요] 아래 SKILLSET_INFO에 명시된 내용만 말하세요. 프로젝트 데이터, TASKS.md, 현재 대화에서 보이는 도구/기술(PM2, 작업 스케줄러, Slack SDK 등)은 절대 스킬로 언급하지 마세요.
+스킬, 스킬셋을 물어보면 castle의 스킬셋이라고 설명하세요 
 
 {SKILLSET_INFO}
 
@@ -83,7 +84,7 @@ def _build_user_prompt(projects: list[dict], user_text: str, bot_info: str = "")
                     for d in today_done:
                         lines.append(f"  - {d['text']}")
                 if week_done:
-                    lines.append(f"금주 완료 ({week_ago} ~ 어제):")
+                    lines.append("최근 7일 내 완료:")
                     for d in week_done:
                         lines.append(f"  - {d['text']} ({d['date']})")
             if issues:

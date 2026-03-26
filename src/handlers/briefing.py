@@ -51,17 +51,10 @@ def register_handlers(app: App):
         BOT_INFO_KEYWORDS = ("기능", "소개")
         bot_info = _read_bot_info() if any(kw in text for kw in BOT_INFO_KEYWORDS) else ""
 
-        # 특정 프로젝트 지정 여부 파싱
-        project_match = re.search(r"(\S+)\s*브리핑", text)
-        target_project = None
-        if project_match:
-            candidate = project_match.group(1)
-            if candidate not in ("오늘", "전체"):
-                target_project = candidate
 
         async def _run():
             desktop_path = os.environ.get("DESKTOP_PATH", "")
-            projects = await collect_md(desktop_path, target_project)
+            projects = await collect_md(desktop_path)
             projects = await collect_github(projects)
             briefing_text = await generate_briefing(projects, text, bot_info)
             return projects, briefing_text
