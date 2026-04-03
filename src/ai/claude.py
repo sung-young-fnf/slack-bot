@@ -57,42 +57,46 @@ SYSTEM_PROMPT = f"""당신은 개발자를 위한 Slack AI 어시스턴트입니
 import json
 
 
-CLASSIFY_PROMPT = """사용자의 Slack 메시지를 분석하여 요청 유형을 판단하세요.
+CLASSIFY_PROMPT = """당신은 Slack 봇의 요청 분류기입니다. 사용자 메시지의 의도를 정확히 판단하세요.
 
 [오늘 날짜]
 {today}
 
-[요청 유형]
-- "task_add": TASKS.md에 할일을 추가하려는 요청
-  예: "할일 추가해줘", "넣어줘", "작성해줘", "추가해줘", "올려줘", "task.md에 작성", "pr 올려줘"
-- "task_done": TASKS.md에서 할일을 완료 처리하려는 요청
-  예: "끝났어", "다 했어", "완료로", "완료 처리해줘", "체크해줘"
-- "briefing": 업무 브리핑, 할일 현황, 진행상황을 요약해달라는 요청
-  예: "오늘 할일 브리핑", "업무 정리해줘", "진행상황 알려줘", "할일 뭐 있어?"
-- "general": 일반 질문, 일상 대화, 스킬셋 질문, 봇 기능 안내 등 나머지
-  예: "파이썬에서 데코레이터가 뭐야?", "스킬셋 알려줘", "기능 소개해줘", "안녕"
+[요청 유형 — 이 순서대로 판단하세요]
+
+1. "task_add" — 사용자가 TASKS.md에 새 할일 항목을 추가하길 원함
+   핵심: "task.md", "할일", "태스크"와 함께 "추가", "작성", "넣어", "등록", "올려" 등의 동작이 있으면 task_add
+   예시:
+   - "slack_bot에 task.md에 할일을 작성해줘 할일 제목은 git pr자동화 테스트로"
+   - "할일 추가해줘 — API 에러 핸들링"
+   - "slack_bot에 통합 연결 이슈 할일 추가해줘"
+   - "task.md에다가 git pr 자동화 테스트 작성 해줘"
+   - "이거 할일에 넣어줘"
+   - "바로 추가 해서 pr 올려줘"
+
+2. "task_done" — 사용자가 TASKS.md의 기존 할일을 완료 처리하길 원함
+   예시: "끝났어", "다 했어", "완료로 처리해줘", "완료해줘", "체크해줘"
+
+3. "briefing" — 업무 현황, 할일 브리핑, 진행상황 요약 요청
+   핵심: 현재 상태를 "보여줘/알려줘/정리해줘"이고, 새로 추가하거나 변경하는 게 아닌 경우
+   예시: "오늘 할일 브리핑", "업무 정리해줘", "진행상황 알려줘", "할일 뭐 있어?"
+
+4. "general" — 위 어디에도 해당하지 않는 일반 질문/대화
+   예시: "파이썬에서 데코레이터가 뭐야?", "스킬셋 알려줘", "기능 소개해줘"
+
+[중요] "task.md에 작성", "할일 작성", "할일 추가", "할일 등록" 등의 표현이 있으면 반드시 "task_add"입니다. "general"이 아닙니다.
 
 [프로젝트 목록]
 {projects}
 
-[항목 추출 규칙 — task_add / task_done인 경우만]
+[항목 추출 규칙 — task_add / task_done인 경우]
 - items에는 실제 할일 내용만 넣으세요.
-- "해줘", "추가", "등록", "올려줘" 같은 명령어는 절대 항목에 포함하지 마세요.
-- 예시:
-  - "slack_bot에 통합 연결 이슈 할일 추가해줘" → type: "task_add", items: ["통합 연결 이슈"]
-  - "slack_bot 프로젝트에 할일 task.md에다가 git pr 자동화 테스트 작성 해줘" → type: "task_add", items: ["git pr 자동화 테스트 작성"]
-  - "에러 핸들링이랑 로깅 추가 해줘" → type: "task_add", items: ["에러 핸들링", "로깅 추가"]
-  - "그냥 테스트용이라 바로 추가 해서 pr 올려줘" → type: "task_add" (이전 대화에서 항목 추출)
-  - "피드백 루프 기획 완료 처리해줘" → type: "task_done", items: ["피드백 루프 기획"]
-  - "오늘 할일 브리핑해줘" → type: "briefing"
-  - "스킬셋 알려줘" → type: "general"
+- "해줘", "추가", "등록", "올려줘", "작성해줘" 같은 명령어는 항목에 포함하지 마세요.
+- "할일 제목은 XXX로" → items: ["XXX"]
+- "XXX이랑 YYY 추가해줘" → items: ["XXX", "YYY"]
 
-[응답 형식 — 반드시 JSON만 반환]
+[응답 형식 — 반드시 JSON만 반환. 설명 없이 JSON만.]
 {{"type": "task_add" | "task_done" | "briefing" | "general", "project": "프로젝트명 또는 null", "items": ["항목1"], "date": "YYYY-MM-DD 또는 null"}}
-
-- project: 메시지에서 프로젝트를 특정할 수 없으면 null
-- items: task_add/task_done인 경우만 추출. 그 외에는 빈 배열.
-- date: 사용자가 명시한 날짜가 있으면 YYYY-MM-DD 형식으로 변환. 없으면 null.
 """
 
 
@@ -119,7 +123,13 @@ def classify_request(text: str, available_projects: list[str], history: list[dic
             system=system,
             messages=messages,
         )
-        return json.loads(message.content[0].text)
+        raw = message.content[0].text.strip()
+        # ```json ... ``` 코드블록 제거
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+            if raw.endswith("```"):
+                raw = raw[:-3].strip()
+        return json.loads(raw)
     except Exception:
         return {"type": "general", "project": None, "items": [], "date": None}
 
