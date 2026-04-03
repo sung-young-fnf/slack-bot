@@ -38,14 +38,13 @@ def register_handlers(app: App):
             return
 
         # 할일 관리 요청 (TASKS.md 추가/완료) — 승인 없이 즉시 실행
-        # 1차: 키워드 매칭, 2차: AI 판단
+        # 1차: AI 판단, 2차: 키워드 매칭 (AI 실패 시 fallback)
         desktop_path = os.environ.get("DESKTOP_PATH", "")
-        is_task_req = is_task_management(text)
+        available_projects = _list_projects(desktop_path)
+        ai_result = parse_task_with_ai(text, available_projects)
+        is_task_req = ai_result is not None
         if not is_task_req:
-            available_projects = _list_projects(desktop_path)
-            ai_result = parse_task_with_ai(text, available_projects)
-            if ai_result:
-                is_task_req = True
+            is_task_req = is_task_management(text)
 
         if is_task_req:
             result_text = handle_task_management(text, desktop_path)

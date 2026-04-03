@@ -227,35 +227,41 @@ def _execute_local(action: str, project_path: str, project_name: str, items: lis
 
 def handle_task_management(text: str, desktop_path: str) -> str:
     """할일 관리 요청을 처리하고 응답 텍스트를 반환한다.
-    1차: 키워드 매칭으로 빠르게 처리
-    2차: 키워드 실패 시 Claude AI로 의도 분석
+    1차: AI 판단 (자연어 이해)
+    2차: 키워드 매칭 (AI 실패 시 fallback)
     """
     available_projects = _list_projects(desktop_path)
 
     if not available_projects:
         return "TASKS.md가 있는 프로젝트가 없어요."
 
-    # --- 1차: 키워드 매칭 ---
-    project_name = _extract_project_name(text, available_projects)
-    items = _extract_items(text)
-    action = "add" if is_add_request(text) else "done" if is_done_request(text) else None
+    action = None
+    project_name = None
+    items = []
     done_date = None
 
-    # --- 2차: AI 판단 (키워드로 부족한 부분 보완) ---
-    if not (project_name and items and action):
-        ai_result = parse_task_with_ai(text, available_projects)
-        if ai_result:
-            action = action or ai_result.get("action")
-            project_name = project_name or ai_result.get("project")
-            items = items or ai_result.get("items", [])
-            done_date = ai_result.get("date")
+    # --- 1차: AI 판단 (메인) ---
+    ai_result = parse_task_with_ai(text, available_projects)
+    if ai_result:
+        action = ai_result.get("action")
+        project_name = ai_result.get("project")
+        items = ai_result.get("items", [])
+        done_date = ai_result.get("date")
+
+    # --- 2차: 키워드 매칭 (AI 결과가 부족한 부분 보완) ---
+    if not action:
+        action = "add" if is_add_request(text) else "done" if is_done_request(text) else None
+    if not project_name:
+        project_name = _extract_project_name(text, available_projects)
+    if not items:
+        items = _extract_items(text)
 
     if not project_name:
         project_list = "\n".join(f"  - {p}" for p in available_projects)
         return f"어떤 프로젝트인지 알려주세요.\n\n현재 프로젝트 목록:\n{project_list}"
 
     if not items:
-        return "추가하거나 완료할 항목을 알려주세요.\n\n예시:\n  - `할일 추가해줘 — \"API 에러 핸들링\", \"README 업데이트\"`\n  - `\"로깅 추가\" 완료 처리해줘`"
+        return "추가하거나 완료할 항목을 알려주세요.\n\n예시:\n  - `slack_bot에 API 에러 핸들링 할일 추가해줘`\n  - `slack_bot에서 로깅 추가 완료 처리해줘`"
 
     if not action:
         return "요청을 이해하지 못했어요. \"할일 추가\" 또는 \"완료 처리\"로 말씀해주세요."
