@@ -16,9 +16,9 @@ def _get_conn() -> sqlite3.Connection:
     global _conn
     if _conn is None:
         DB_DIR.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        _conn = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=10)
         _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.execute("PRAGMA busy_timeout=5000")
+        _conn.execute("PRAGMA busy_timeout=10000")
         _conn.row_factory = sqlite3.Row
     return _conn
 

@@ -14,9 +14,12 @@ register_handlers(app)
 
 if __name__ == "__main__":
     init_db()
-    cleaned = cleanup_old_conversations()
-    if cleaned:
-        print(f"Cleaned up {cleaned} old conversation records.")
+    try:
+        cleaned = cleanup_old_conversations()
+        if cleaned:
+            print(f"Cleaned up {cleaned} old conversation records.")
+    except Exception as e:
+        print(f"Cleanup skipped: {e}")
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     print("Slack Briefing Bot is running...")
     handler.start()
