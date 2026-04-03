@@ -37,18 +37,22 @@ def register_handlers(app: App):
             )
             return
 
+        # 대화내역 조회 (할일 관리 + 브리핑 모두에서 사용)
+        save_message(channel, thread_ts, "user", text)
+        history = get_thread_history(channel, thread_ts)
+        history = history[:-1] if history else []  # 현재 메시지 제외
+
         # 할일 관리 요청 (TASKS.md 추가/완료) — 승인 없이 즉시 실행
-        # 1차: AI 판단, 2차: 키워드 매칭 (AI 실패 시 fallback)
+        # 1차: AI 판단 (대화 맥락 포함), 2차: 키워드 매칭 (AI 실패 시 fallback)
         desktop_path = os.environ.get("DESKTOP_PATH", "")
         available_projects = _list_projects(desktop_path)
-        ai_result = parse_task_with_ai(text, available_projects)
+        ai_result = parse_task_with_ai(text, available_projects, history)
         is_task_req = ai_result is not None
         if not is_task_req:
             is_task_req = is_task_management(text)
 
         if is_task_req:
-            result_text = handle_task_management(text, desktop_path)
-            save_message(channel, thread_ts, "user", text)
+            result_text = handle_task_management(text, desktop_path, history)
             save_message(channel, thread_ts, "assistant", result_text)
             client.chat_postMessage(
                 channel=channel,
@@ -73,11 +77,7 @@ def register_handlers(app: App):
         BOT_INFO_KEYWORDS = ("기능", "소개")
         bot_info = _read_bot_info() if any(kw in text for kw in BOT_INFO_KEYWORDS) else ""
 
-        # 사용자 메시지 저장 & 대화내역 조회
-        save_message(channel, thread_ts, "user", text)
-        history = get_thread_history(channel, thread_ts)
-        # 현재 메시지는 history 마지막에 포함되어 있으므로 제외 (generate_briefing에서 별도 추가)
-        history = history[:-1] if history else []
+        # history는 이미 위에서 조회됨
 
         async def _run():
             desktop_path = os.environ.get("DESKTOP_PATH", "")

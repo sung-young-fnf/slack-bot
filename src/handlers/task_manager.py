@@ -225,9 +225,9 @@ def _execute_local(action: str, project_path: str, project_name: str, items: lis
         return f"✅ 완료 처리!\n━━━━━━━━━━━━━━━━━━\n📁 프로젝트: {project_name}\n{items_text}\n━━━━━━━━━━━━━━━━━━\n⚠️ Git 미연동 — 로컬 파일만 수정됨"
 
 
-def handle_task_management(text: str, desktop_path: str) -> str:
+def handle_task_management(text: str, desktop_path: str, history: list[dict] | None = None) -> str:
     """할일 관리 요청을 처리하고 응답 텍스트를 반환한다.
-    1차: AI 판단 (자연어 이해)
+    1차: AI 판단 (자연어 이해, 대화 맥락 포함)
     2차: 키워드 매칭 (AI 실패 시 fallback)
     """
     available_projects = _list_projects(desktop_path)
@@ -240,8 +240,8 @@ def handle_task_management(text: str, desktop_path: str) -> str:
     items = []
     done_date = None
 
-    # --- 1차: AI 판단 (메인) ---
-    ai_result = parse_task_with_ai(text, available_projects)
+    # --- 1차: AI 판단 (메인, 대화 맥락 포함) ---
+    ai_result = parse_task_with_ai(text, available_projects, history)
     if ai_result:
         action = ai_result.get("action")
         project_name = ai_result.get("project")
