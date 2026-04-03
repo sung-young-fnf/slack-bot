@@ -175,7 +175,7 @@ pm2 logs slack-briefing-bot    # 로그 확인
 ## TASKS.md 파싱 규칙
 
 ```markdown
-- [ ] 해야 할 작업
+- [ ] 해야 할 작업 (2026-04-02)
 - [x] 완료된 작업 (2026-03-25)
 ```
 
