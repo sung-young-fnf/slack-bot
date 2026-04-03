@@ -14,6 +14,8 @@ def _run_git(project_path: str, *args: str) -> tuple[bool, str]:
             cwd=project_path,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=30,
         )
         output = result.stdout.strip() or result.stderr.strip()
