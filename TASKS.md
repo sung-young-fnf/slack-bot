@@ -24,9 +24,21 @@
 - [x] .gitignore - data/ 디렉토리 추가 (SQLite DB 파일 커밋 방지) (2026-04-03)
 - [x] handlers/task_manager.py 구현 - Slack 멘션으로 TASKS.md 할일 추가/완료 처리 (2026-04-03)
 - [x] briefing.py - 할일 관리 키워드 감지 시 task_manager로 라우팅 (2026-04-03)
+- [x] executor/git_manager.py 구현 - 브랜치 생성/커밋/푸시/PR 자동화 (PyGithub) (2026-04-03)
+- [x] task_manager.py - git 기반으로 변경 (로컬 직접 수정 → 브랜치/커밋/PR) (2026-04-03)
+- [x] git_manager.py - Windows cp949 인코딩 문제 수정 (encoding=utf-8) (2026-04-03)
+- [x] git_manager.py - remote URL 파싱 오류 수정 (rstrip → endswith) (2026-04-03)
+- [x] claude.py - AI 할일 항목 추출 프롬프트 개선 (2026-04-03)
+- [x] briefing.py - AI 판단을 메인으로, 키워드 매칭을 fallback으로 전환 (2026-04-03)
+- [x] claude.py - 할일 관리에 스레드 대화 맥락 전달 (2026-04-03)
+- [x] conversation_store.py - DB 전체 함수에 에러 처리 추가 (locked 시 봇 정상 동작) (2026-04-03)
+- [x] main.py - PM2 재시작 루프 해결 (cleanup try/except + DB timeout 증가) (2026-04-03)
+- [x] claude.py - 키워드 매칭 제거, AI 통합 라우터(classify_request)로 전면 전환 (2026-04-03)
+- [x] claude.py - AI 분류 JSON 파싱 수정 (Haiku ```json 코드블록 처리) (2026-04-03)
+- [x] conversation_store.py - 대화 맥락 최대 턴 수 20 → 6으로 축소 (속도 개선) (2026-04-03)
+- [x] README.md, CLAUDE.md, structure.md 전면 업데이트 (2026-04-03)
 - [ ] handlers/code_task.py 구현 - 코드 작업 요청 핸들러 (계획 → 승인 → 실행 흐름)
 - [ ] ai/code_planner.py 구현 - 코드 분석 + 변경 계획 생성 프롬프트
-- [ ] executor/git_manager.py 구현 - 브랜치 생성/커밋/푸시/PR 자동화
 - [ ] executor/code_writer.py 구현 - Claude 생성 코드 → 파일 쓰기
 - [ ] storage/code_task_store.py 구현 - code_tasks 테이블 CRUD
 - [ ] 코드 수정 & PR 자동 생성 통합 테스트
