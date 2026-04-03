@@ -160,7 +160,7 @@ pm2 logs slack-briefing-bot    # 로그 확인
 
 | 기능 | 설명 |
 |------|------|
-| AI 요청 분류 | Haiku가 모든 멘션을 자동 분류 (task_add/task_done/briefing/general) |
+| AI 요청 분류 | AI가 모든 멘션을 자동 분류 (task_add/task_done/briefing/general) |
 | 업무 브리핑 | TASKS.md + GitHub Issues/PR 수집 → Sonnet 분석 → 우선순위 브리핑 |
 | 할일 추가/완료 | Slack 멘션으로 TASKS.md 수정 → Git PR 자동 생성 |
 | 대화 맥락 유지 | 스레드 내 대화내역을 SQLite에 저장 (7일 보관, 최대 6턴) |
