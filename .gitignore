@@ -10,3 +10,6 @@ dist/
 build/
 .DS_Store
 data/
+docs/feature_auto_code_pr.md
+docs/feature_conversation_history.md
+architecture_explained_game.md

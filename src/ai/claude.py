@@ -54,6 +54,57 @@ SYSTEM_PROMPT = f"""당신은 개발자를 위한 Slack AI 어시스턴트입니
 """
 
 
+import json
+
+
+TASK_PARSE_PROMPT = """사용자의 Slack 메시지를 분석하여 할일 관리 요청인지 판단하세요.
+
+[오늘 날짜]
+{today}
+
+[판단 기준]
+- "add": TASKS.md에 할일을 추가하려는 요청 (예: "이거 할일에 넣어줘", "태스크 등록", "이거 추가", "작성해줘")
+- "done": TASKS.md에서 할일을 완료 처리하려는 요청 (예: "이거 끝났어", "다 했어", "완료로", "완료 처리", "완료로 작성")
+- "none": 할일 관리와 무관한 요청
+
+[프로젝트 목록]
+{projects}
+
+[응답 형식 — 반드시 JSON만 반환]
+{{"action": "add" | "done" | "none", "project": "프로젝트명 또는 null", "items": ["항목1", "항목2"], "date": "YYYY-MM-DD 또는 null"}}
+
+- project: 메시지에서 프로젝트를 특정할 수 없으면 null
+- items: 추출된 할일 항목 목록. 없으면 빈 배열
+- date: 사용자가 명시한 날짜가 있으면 YYYY-MM-DD 형식으로 변환. 없으면 null. (예: "3월 31자" → "2026-03-31")
+"""
+
+
+def parse_task_with_ai(text: str, available_projects: list[str]) -> dict | None:
+    """Claude AI로 할일 관리 요청을 분석한다. 실패 시 None 반환."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+
+    projects_str = ", ".join(available_projects) if available_projects else "없음"
+    today_str = date.today().strftime("%Y-%m-%d")
+    system = TASK_PARSE_PROMPT.format(projects=projects_str, today=today_str)
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            system=system,
+            messages=[{"role": "user", "content": text}],
+        )
+        result = json.loads(message.content[0].text)
+        if result.get("action") == "none":
+            return None
+        return result
+    except Exception:
+        return None
+
+
 def _build_user_prompt(projects: list[dict], user_text: str, bot_info: str = "") -> str:
     today = date.today()
     today_str = today.strftime("%Y-%m-%d")

@@ -6,9 +6,10 @@ from slack_bolt import App
 
 from collectors.md_collector import collect_md
 from collectors.github_collector import collect_github
-from ai.claude import generate_briefing
+from ai.claude import generate_briefing, parse_task_with_ai
 from formatter.block_kit import build_briefing_blocks
 from storage.conversation_store import save_message, get_thread_history, maybe_cleanup
+from handlers.task_manager import is_task_management, handle_task_management, _list_projects
 
 CLAUDE_MD_PATH = Path(__file__).parent.parent.parent / "CLAUDE.md"
 
@@ -33,6 +34,27 @@ def register_handlers(app: App):
                 channel=channel,
                 thread_ts=thread_ts,
                 text="안녕하세요! 무엇을 도와드릴까요?😊"
+            )
+            return
+
+        # 할일 관리 요청 (TASKS.md 추가/완료) — 승인 없이 즉시 실행
+        # 1차: 키워드 매칭, 2차: AI 판단
+        desktop_path = os.environ.get("DESKTOP_PATH", "")
+        is_task_req = is_task_management(text)
+        if not is_task_req:
+            available_projects = _list_projects(desktop_path)
+            ai_result = parse_task_with_ai(text, available_projects)
+            if ai_result:
+                is_task_req = True
+
+        if is_task_req:
+            result_text = handle_task_management(text, desktop_path)
+            save_message(channel, thread_ts, "user", text)
+            save_message(channel, thread_ts, "assistant", result_text)
+            client.chat_postMessage(
+                channel=channel,
+                thread_ts=thread_ts,
+                text=result_text,
             )
             return
 

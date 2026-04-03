@@ -22,3 +22,11 @@
 - [x] claude.py - generate_briefing에 history 파라미터 추가, 대화 맥락 전달 (2026-04-03)
 - [x] main.py - 앱 시작 시 DB 초기화 및 오래된 대화 cleanup 호출 (2026-04-03)
 - [x] .gitignore - data/ 디렉토리 추가 (SQLite DB 파일 커밋 방지) (2026-04-03)
+- [x] handlers/task_manager.py 구현 - Slack 멘션으로 TASKS.md 할일 추가/완료 처리 (2026-04-03)
+- [x] briefing.py - 할일 관리 키워드 감지 시 task_manager로 라우팅 (2026-04-03)
+- [ ] handlers/code_task.py 구현 - 코드 작업 요청 핸들러 (계획 → 승인 → 실행 흐름)
+- [ ] ai/code_planner.py 구현 - 코드 분석 + 변경 계획 생성 프롬프트
+- [ ] executor/git_manager.py 구현 - 브랜치 생성/커밋/푸시/PR 자동화
+- [ ] executor/code_writer.py 구현 - Claude 생성 코드 → 파일 쓰기
+- [ ] storage/code_task_store.py 구현 - code_tasks 테이블 CRUD
+- [ ] 코드 수정 & PR 자동 생성 통합 테스트
