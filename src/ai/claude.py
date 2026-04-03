@@ -57,7 +57,8 @@ SYSTEM_PROMPT = f"""당신은 개발자를 위한 Slack AI 어시스턴트입니
 def _build_user_prompt(projects: list[dict], user_text: str, bot_info: str = "") -> str:
     today = date.today()
     today_str = today.strftime("%Y-%m-%d")
-    week_ago = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+    this_monday = (today - timedelta(days=today.weekday())).strftime("%Y-%m-%d")
+    last_monday = (today - timedelta(days=today.weekday() + 7)).strftime("%Y-%m-%d")
     lines = [f"[오늘 날짜]\n{today_str}\n", f"[사용자 질문]\n{user_text}\n"]
 
     if bot_info:
@@ -77,15 +78,15 @@ def _build_user_prompt(projects: list[dict], user_text: str, bot_info: str = "")
                 for t in todos:
                     lines.append(f"  - {t}")
             if done:
-                today_done = [d for d in done if d.get("date") == today_str]
-                week_done = [d for d in done if d.get("date") and week_ago <= d["date"] < today_str]
-                if today_done:
-                    lines.append(f"오늘 완료 ({today_str}):")
-                    for d in today_done:
-                        lines.append(f"  - {d['text']}")
-                if week_done:
-                    lines.append("최근 7일 내 완료:")
-                    for d in week_done:
+                this_week_done = [d for d in done if d.get("date") and d["date"] >= this_monday]
+                last_week_done = [d for d in done if d.get("date") and last_monday <= d["date"] < this_monday]
+                if this_week_done:
+                    lines.append("이번주 완료:")
+                    for d in this_week_done:
+                        lines.append(f"  - {d['text']} ({d['date']})")
+                if last_week_done:
+                    lines.append("지난주 완료:")
+                    for d in last_week_done:
                         lines.append(f"  - {d['text']} ({d['date']})")
             if issues:
                 lines.append("GitHub Issues:")
@@ -102,20 +103,27 @@ def _build_user_prompt(projects: list[dict], user_text: str, bot_info: str = "")
     return "\n".join(lines)
 
 
-async def generate_briefing(projects: list[dict], user_text: str = "", bot_info: str = "") -> str:
+async def generate_briefing(
+    projects: list[dict], user_text: str = "", bot_info: str = "", history: list[dict] | None = None
+) -> str:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return _fallback_briefing(projects)
 
     user_prompt = _build_user_prompt(projects, user_text, bot_info)
 
+    messages = []
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": user_prompt})
+
     try:
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_prompt}],
+            messages=messages,
         )
         return message.content[0].text
     except Exception as e:

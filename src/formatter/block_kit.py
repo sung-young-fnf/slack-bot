@@ -2,7 +2,7 @@ def build_briefing_blocks(briefing_text: str, projects: list[dict], is_briefing:
     blocks = []
 
     # Header
-    header_text = "오늘의 개발 브리핑" if is_briefing else "AI Agent"
+    header_text = "오늘의 업무 브리핑" if is_briefing else "AI Agent"
     blocks.append({
         "type": "header",
         "text": {"type": "plain_text", "text": header_text, "emoji": True}

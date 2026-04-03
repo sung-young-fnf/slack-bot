@@ -3,7 +3,6 @@
 - [x] 봇 멘션 응답 테스트 (2026-03-25)
 - [x] PM2로 운영 환경 배포 (ecosystem.config.js 기반) (2026-03-25)
 - [x] Windows 작업 스케줄러에 PM2 등록 (로그인 시 자동 시작) (2026-03-25)
-- [ ] 에러 로그 모니터링 설정
 - [x] 프로젝트 구조 설계 (Plan.md 작성) (2026-03-24)
 - [x] md_collector.py 구현 (2026-03-24)
 - [x] github_collector.py 구현 (2026-03-24)
@@ -17,3 +16,9 @@
 - [x] briefing.py - 사용자 질문 텍스트를 Claude 프롬프트에 전달 (2026-03-25)
 - [x] block_kit.py - is_briefing=False 시 프로젝트 현황 섹션 제거 (2026-03-25)
 - [x] briefing.py - 스킬 키워드 감지 시 CLAUDE.md 읽어 봇 소개 응답 (2026-03-25)
+- [x] 대화내역 저장 기능 기획서 작성 (docs/feature_conversation_history.md) (2026-04-03)
+- [x] storage/conversation_store.py 구현 - SQLite 기반 대화 저장/조회/7일 자동 정리 (2026-04-03)
+- [x] briefing.py - 멘션 시 대화내역 저장 및 스레드별 히스토리 조회 연동 (2026-04-03)
+- [x] claude.py - generate_briefing에 history 파라미터 추가, 대화 맥락 전달 (2026-04-03)
+- [x] main.py - 앱 시작 시 DB 초기화 및 오래된 대화 cleanup 호출 (2026-04-03)
+- [x] .gitignore - data/ 디렉토리 추가 (SQLite DB 파일 커밋 방지) (2026-04-03)

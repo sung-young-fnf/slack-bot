@@ -8,6 +8,7 @@ from collectors.md_collector import collect_md
 from collectors.github_collector import collect_github
 from ai.claude import generate_briefing
 from formatter.block_kit import build_briefing_blocks
+from storage.conversation_store import save_message, get_thread_history, maybe_cleanup
 
 CLAUDE_MD_PATH = Path(__file__).parent.parent.parent / "CLAUDE.md"
 
@@ -51,12 +52,17 @@ def register_handlers(app: App):
         BOT_INFO_KEYWORDS = ("기능", "소개")
         bot_info = _read_bot_info() if any(kw in text for kw in BOT_INFO_KEYWORDS) else ""
 
+        # 사용자 메시지 저장 & 대화내역 조회
+        save_message(channel, thread_ts, "user", text)
+        history = get_thread_history(channel, thread_ts)
+        # 현재 메시지는 history 마지막에 포함되어 있으므로 제외 (generate_briefing에서 별도 추가)
+        history = history[:-1] if history else []
 
         async def _run():
             desktop_path = os.environ.get("DESKTOP_PATH", "")
             projects = await collect_md(desktop_path)
             projects = await collect_github(projects)
-            briefing_text = await generate_briefing(projects, text, bot_info)
+            briefing_text = await generate_briefing(projects, text, bot_info, history)
             return projects, briefing_text
 
         try:
@@ -64,12 +70,16 @@ def register_handlers(app: App):
             projects, briefing_text = loop.run_until_complete(_run())
             loop.close()
 
+            # 봇 응답 저장
+            save_message(channel, thread_ts, "assistant", briefing_text)
+            maybe_cleanup()
+
             blocks = build_briefing_blocks(briefing_text, projects, is_briefing)
 
             client.chat_update(
                 channel=channel,
                 ts=loading_ts,
-                text=briefing_text[:100] if not is_briefing else "오늘의 개발 브리핑",
+                text=briefing_text[:100] if not is_briefing else "오늘의 업무 브리핑",
                 blocks=blocks,
             )
         except Exception as e:
