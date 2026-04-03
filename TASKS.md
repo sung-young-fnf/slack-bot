@@ -30,3 +30,4 @@
 - [ ] executor/code_writer.py 구현 - Claude 생성 코드 → 파일 쓰기
 - [ ] storage/code_task_store.py 구현 - code_tasks 테이블 CRUD
 - [ ] 코드 수정 & PR 자동 생성 통합 테스트
+- [ ] git pr 자동화 테스트 진행
