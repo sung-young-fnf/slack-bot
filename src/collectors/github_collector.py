@@ -24,8 +24,8 @@ def _parse_remote_url(config_path: Path) -> tuple[str, str] | None:
         if not url:
             return None
 
-        # HTTPS
-        m = re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$", url)
+        # HTTPS (토큰 포함 URL 지원: https://token@github.com/...)
+        m = re.match(r"https://(?:[^@]+@)?github\.com/([^/]+)/([^/]+?)(?:\.git)?$", url)
         if m:
             return m.group(1), m.group(2)
 

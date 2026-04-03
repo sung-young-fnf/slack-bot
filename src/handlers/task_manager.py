@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from datetime import date
 from pathlib import Path
 
@@ -142,7 +143,8 @@ def _execute_with_git(action: str, project_path: str, project_name: str, items: 
     # 브랜치명 생성
     today_str = date.today().strftime("%Y%m%d")
     action_label = "add-task" if action == "add" else "done-task"
-    branch_name = f"task/{action_label}-{today_str}"
+    suffix = int(time.time()) % 10000
+    branch_name = f"task/{action_label}-{today_str}-{suffix}"
 
     # 브랜치 생성
     ok, msg = create_branch(project_path, branch_name)
