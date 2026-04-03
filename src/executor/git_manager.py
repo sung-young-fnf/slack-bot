@@ -47,8 +47,11 @@ def get_remote_url(project_path: str) -> str | None:
         return None
 
     # https://github.com/owner/repo.git → owner/repo
+    # https://token@github.com/owner/repo.git → owner/repo
     # git@github.com:owner/repo.git → owner/repo
-    url = output.strip().rstrip(".git")
+    url = output.strip()
+    if url.endswith(".git"):
+        url = url[:-4]
     if "github.com" in url:
         if url.startswith("git@"):
             return url.split(":")[-1]
