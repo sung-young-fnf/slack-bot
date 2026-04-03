@@ -3,7 +3,6 @@ import re
 from datetime import date
 from pathlib import Path
 
-from ai.claude import parse_task_with_ai
 from executor.git_manager import (
     has_git, create_branch, commit_and_push, create_pr, cleanup_branch, restore_branch,
 )
@@ -225,30 +224,30 @@ def _execute_local(action: str, project_path: str, project_name: str, items: lis
         return f"✅ 완료 처리!\n━━━━━━━━━━━━━━━━━━\n📁 프로젝트: {project_name}\n{items_text}\n━━━━━━━━━━━━━━━━━━\n⚠️ Git 미연동 — 로컬 파일만 수정됨"
 
 
-def handle_task_management(text: str, desktop_path: str, history: list[dict] | None = None) -> str:
+def handle_task_management(text: str, desktop_path: str, history: list[dict] | None = None, classification: dict | None = None) -> str:
     """할일 관리 요청을 처리하고 응답 텍스트를 반환한다.
-    1차: AI 판단 (자연어 이해, 대화 맥락 포함)
-    2차: 키워드 매칭 (AI 실패 시 fallback)
+    classification이 있으면 AI 판단 결과를 사용하고,
+    부족한 부분만 키워드 매칭으로 보완한다.
     """
     available_projects = _list_projects(desktop_path)
 
     if not available_projects:
         return "TASKS.md가 있는 프로젝트가 없어요."
 
+    # AI 판단 결과 사용
     action = None
     project_name = None
     items = []
     done_date = None
 
-    # --- 1차: AI 판단 (메인, 대화 맥락 포함) ---
-    ai_result = parse_task_with_ai(text, available_projects, history)
-    if ai_result:
-        action = ai_result.get("action")
-        project_name = ai_result.get("project")
-        items = ai_result.get("items", [])
-        done_date = ai_result.get("date")
+    if classification:
+        req_type = classification.get("type", "")
+        action = "add" if req_type == "task_add" else "done" if req_type == "task_done" else None
+        project_name = classification.get("project")
+        items = classification.get("items", [])
+        done_date = classification.get("date")
 
-    # --- 2차: 키워드 매칭 (AI 결과가 부족한 부분 보완) ---
+    # 키워드 매칭으로 보완 (AI 결과가 부족한 부분)
     if not action:
         action = "add" if is_add_request(text) else "done" if is_done_request(text) else None
     if not project_name:

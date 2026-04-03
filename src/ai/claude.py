@@ -57,52 +57,54 @@ SYSTEM_PROMPT = f"""당신은 개발자를 위한 Slack AI 어시스턴트입니
 import json
 
 
-TASK_PARSE_PROMPT = """사용자의 Slack 메시지를 분석하여 할일 관리 요청인지 판단하세요.
+CLASSIFY_PROMPT = """사용자의 Slack 메시지를 분석하여 요청 유형을 판단하세요.
 
 [오늘 날짜]
 {today}
 
-[판단 기준 — 매우 중요]
-사용자가 TASKS.md에 항목을 추가하거나 완료 처리하려는 의도가 있으면 반드시 "add" 또는 "done"으로 판단하세요.
-아래와 같은 표현은 모두 할일 관리 요청입니다:
-- "add": "할일 추가", "넣어줘", "작성해줘", "추가해줘", "등록해줘", "올려줘", "task.md에 작성", "할일에 넣어", "pr 올려줘" (할일을 추가하고 PR을 만들라는 의미)
-- "done": "끝났어", "다 했어", "완료로", "완료 처리", "완료해줘", "체크해줘"
-- "none": 위 의도가 전혀 없는 요청 (브리핑, 질문, 일상 대화 등)
-
-의심스러우면 "add" 또는 "done"으로 판단하세요. "none"은 확실할 때만 사용하세요.
+[요청 유형]
+- "task_add": TASKS.md에 할일을 추가하려는 요청
+  예: "할일 추가해줘", "넣어줘", "작성해줘", "추가해줘", "올려줘", "task.md에 작성", "pr 올려줘"
+- "task_done": TASKS.md에서 할일을 완료 처리하려는 요청
+  예: "끝났어", "다 했어", "완료로", "완료 처리해줘", "체크해줘"
+- "briefing": 업무 브리핑, 할일 현황, 진행상황을 요약해달라는 요청
+  예: "오늘 할일 브리핑", "업무 정리해줘", "진행상황 알려줘", "할일 뭐 있어?"
+- "general": 일반 질문, 일상 대화, 스킬셋 질문, 봇 기능 안내 등 나머지
+  예: "파이썬에서 데코레이터가 뭐야?", "스킬셋 알려줘", "기능 소개해줘", "안녕"
 
 [프로젝트 목록]
 {projects}
 
-[항목 추출 규칙 — 매우 중요]
-- items에는 실제 할일 내용만 넣으세요. "해줘", "추가", "등록", "올려줘" 같은 명령어는 절대 항목에 포함하지 마세요.
-- 사용자가 말하는 작업/업무 내용을 정확히 추출하세요.
+[항목 추출 규칙 — task_add / task_done인 경우만]
+- items에는 실제 할일 내용만 넣으세요.
+- "해줘", "추가", "등록", "올려줘" 같은 명령어는 절대 항목에 포함하지 마세요.
 - 예시:
-  - "slack_bot에 통합 연결 이슈 라고 할일 추가해줘" → action: "add", items: ["통합 연결 이슈"]
-  - "slack_bot 프로젝트에 할일 task.md에다가 git pr 자동화 테스트 작성 해줘" → action: "add", items: ["git pr 자동화 테스트 작성"]
-  - "에러 핸들링이랑 로깅 추가 해줘" → action: "add", items: ["에러 핸들링", "로깅 추가"]
-  - "그냥 테스트용이라 바로 추가 해서 pr 올려줘" → action: "add" (이전 대화에서 항목 추출)
-  - "피드백 루프 기획 완료 처리해줘" → action: "done", items: ["피드백 루프 기획"]
-  - "오늘 할일 브리핑해줘" → action: "none" (이건 브리핑 요청)
+  - "slack_bot에 통합 연결 이슈 할일 추가해줘" → type: "task_add", items: ["통합 연결 이슈"]
+  - "slack_bot 프로젝트에 할일 task.md에다가 git pr 자동화 테스트 작성 해줘" → type: "task_add", items: ["git pr 자동화 테스트 작성"]
+  - "에러 핸들링이랑 로깅 추가 해줘" → type: "task_add", items: ["에러 핸들링", "로깅 추가"]
+  - "그냥 테스트용이라 바로 추가 해서 pr 올려줘" → type: "task_add" (이전 대화에서 항목 추출)
+  - "피드백 루프 기획 완료 처리해줘" → type: "task_done", items: ["피드백 루프 기획"]
+  - "오늘 할일 브리핑해줘" → type: "briefing"
+  - "스킬셋 알려줘" → type: "general"
 
 [응답 형식 — 반드시 JSON만 반환]
-{{"action": "add" | "done" | "none", "project": "프로젝트명 또는 null", "items": ["항목1", "항목2"], "date": "YYYY-MM-DD 또는 null"}}
+{{"type": "task_add" | "task_done" | "briefing" | "general", "project": "프로젝트명 또는 null", "items": ["항목1"], "date": "YYYY-MM-DD 또는 null"}}
 
 - project: 메시지에서 프로젝트를 특정할 수 없으면 null
-- items: 추출된 할일 항목 목록. 없으면 빈 배열. 명령어("해줘", "추가", "등록")는 절대 포함하지 말 것.
-- date: 사용자가 명시한 날짜가 있으면 YYYY-MM-DD 형식으로 변환. 없으면 null. (예: "3월 31자" → "2026-03-31")
+- items: task_add/task_done인 경우만 추출. 그 외에는 빈 배열.
+- date: 사용자가 명시한 날짜가 있으면 YYYY-MM-DD 형식으로 변환. 없으면 null.
 """
 
 
-def parse_task_with_ai(text: str, available_projects: list[str], history: list[dict] | None = None) -> dict | None:
-    """Claude AI로 할일 관리 요청을 분석한다. 실패 시 None 반환."""
+def classify_request(text: str, available_projects: list[str], history: list[dict] | None = None) -> dict:
+    """Claude AI로 요청 유형을 분류한다. 실패 시 기본값 반환."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        return None
+        return {"type": "general", "project": None, "items": [], "date": None}
 
     projects_str = ", ".join(available_projects) if available_projects else "없음"
     today_str = date.today().strftime("%Y-%m-%d")
-    system = TASK_PARSE_PROMPT.format(projects=projects_str, today=today_str)
+    system = CLASSIFY_PROMPT.format(projects=projects_str, today=today_str)
 
     messages = []
     if history:
@@ -117,12 +119,9 @@ def parse_task_with_ai(text: str, available_projects: list[str], history: list[d
             system=system,
             messages=messages,
         )
-        result = json.loads(message.content[0].text)
-        if result.get("action") == "none":
-            return None
-        return result
+        return json.loads(message.content[0].text)
     except Exception:
-        return None
+        return {"type": "general", "project": None, "items": [], "date": None}
 
 
 def _build_user_prompt(projects: list[dict], user_text: str, bot_info: str = "") -> str:

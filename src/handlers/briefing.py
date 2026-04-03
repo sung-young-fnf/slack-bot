@@ -6,10 +6,10 @@ from slack_bolt import App
 
 from collectors.md_collector import collect_md
 from collectors.github_collector import collect_github
-from ai.claude import generate_briefing, parse_task_with_ai
+from ai.claude import generate_briefing, classify_request
 from formatter.block_kit import build_briefing_blocks
 from storage.conversation_store import save_message, get_thread_history, maybe_cleanup
-from handlers.task_manager import is_task_management, handle_task_management, _list_projects
+from handlers.task_manager import handle_task_management, _list_projects
 
 CLAUDE_MD_PATH = Path(__file__).parent.parent.parent / "CLAUDE.md"
 
@@ -37,22 +37,20 @@ def register_handlers(app: App):
             )
             return
 
-        # 대화내역 조회 (할일 관리 + 브리핑 모두에서 사용)
+        # 대화내역 저장 & 조회
         save_message(channel, thread_ts, "user", text)
         history = get_thread_history(channel, thread_ts)
-        history = history[:-1] if history else []  # 현재 메시지 제외
+        history = history[:-1] if history else []
 
-        # 할일 관리 요청 (TASKS.md 추가/완료) — 승인 없이 즉시 실행
-        # 1차: AI 판단 (대화 맥락 포함), 2차: 키워드 매칭 (AI 실패 시 fallback)
+        # AI가 요청 유형을 판단
         desktop_path = os.environ.get("DESKTOP_PATH", "")
         available_projects = _list_projects(desktop_path)
-        ai_result = parse_task_with_ai(text, available_projects, history)
-        is_task_req = ai_result is not None
-        if not is_task_req:
-            is_task_req = is_task_management(text)
+        classification = classify_request(text, available_projects, history)
+        req_type = classification.get("type", "general")
 
-        if is_task_req:
-            result_text = handle_task_management(text, desktop_path, history)
+        # --- 할일 관리 (task_add / task_done) ---
+        if req_type in ("task_add", "task_done"):
+            result_text = handle_task_management(text, desktop_path, history, classification)
             save_message(channel, thread_ts, "assistant", result_text)
             client.chat_postMessage(
                 channel=channel,
@@ -61,7 +59,7 @@ def register_handlers(app: App):
             )
             return
 
-        # 즉시 로딩 메시지 응답
+        # --- 브리핑 / 일반 질문 ---
         loading_resp = client.chat_postMessage(
             channel=channel,
             thread_ts=thread_ts,
@@ -69,18 +67,10 @@ def register_handlers(app: App):
         )
         loading_ts = loading_resp["ts"]
 
-        # 브리핑 요청 여부 판단
-        BRIEFING_KEYWORDS = ("브리핑", "할일", "업무", "진행상황")
-        is_briefing = any(kw in text for kw in BRIEFING_KEYWORDS)
-
-        # 봇 소개/기능 질문 여부 판단 (스킬셋 제외 - SKILLSET_INFO는 시스템 프롬프트에 내장됨)
-        BOT_INFO_KEYWORDS = ("기능", "소개")
-        bot_info = _read_bot_info() if any(kw in text for kw in BOT_INFO_KEYWORDS) else ""
-
-        # history는 이미 위에서 조회됨
+        is_briefing = req_type == "briefing"
+        bot_info = _read_bot_info() if not is_briefing else ""
 
         async def _run():
-            desktop_path = os.environ.get("DESKTOP_PATH", "")
             projects = await collect_md(desktop_path)
             projects = await collect_github(projects)
             briefing_text = await generate_briefing(projects, text, bot_info, history)
@@ -91,7 +81,6 @@ def register_handlers(app: App):
             projects, briefing_text = loop.run_until_complete(_run())
             loop.close()
 
-            # 봇 응답 저장
             save_message(channel, thread_ts, "assistant", briefing_text)
             maybe_cleanup()
 
