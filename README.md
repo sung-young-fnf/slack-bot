@@ -4,9 +4,9 @@ Desktop의 개발 프로젝트 `TASKS.md`와 GitHub Issues/PR을 읽어,
 Slack 멘션 한 번으로 오늘 할일을 AI가 브리핑해주는 Bot.
 
 - 배포 없이 로컬 머신에서 Socket Mode로 상시 운영
-- Claude AI로 우선순위 분석 및 브리핑 생성
+- Claude AI가 요청을 자동 분류하여 브리핑/할일 관리/일반 질문 처리
+- Slack 멘션으로 TASKS.md 할일 추가/완료 처리 → Git PR 자동 생성
 - 스레드 내 대화내역 저장으로 맥락 있는 연속 대화 지원
-- Slack 멘션으로 TASKS.md 할일 추가/완료 처리 (Git PR 자동 생성)
 - PM2로 프로세스 관리 (재부팅 후 자동 재시작)
 
 ---
@@ -18,13 +18,13 @@ slack_bot/
 ├── src/
 │   ├── main.py                    # 엔트리포인트, Bolt 앱 초기화
 │   ├── handlers/
-│   │   ├── briefing.py            # 멘션 이벤트 핸들러 + 라우팅
-│   │   └── task_manager.py        # TASKS.md 할일 추가/완료 처리
+│   │   ├── briefing.py            # 멘션 이벤트 핸들러 + AI 라우팅
+│   │   └── task_manager.py        # TASKS.md 할일 추가/완료 + Git PR
 │   ├── collectors/
 │   │   ├── md_collector.py        # TASKS.md 파싱
 │   │   └── github_collector.py    # GitHub Issues/PR 수집
 │   ├── ai/
-│   │   └── claude.py              # Claude API 호출 + 할일 의도 분석
+│   │   └── claude.py              # AI 요청 분류 + 브리핑 생성
 │   ├── executor/
 │   │   └── git_manager.py         # Git 브랜치/커밋/푸시/PR 관리
 │   ├── formatter/
@@ -104,18 +104,9 @@ python src/main.py
 **운영 환경 (PM2)**
 
 ```bash
-# 시작
 pm2 start ecosystem.config.js
-
-# 재부팅 후 자동 시작 등록
-pm2 startup
-pm2 save
-
-# 상태 확인
-pm2 status
-
-# 로그 확인
-pm2 logs slack-briefing-bot
+pm2 startup && pm2 save
+pm2 logs slack-briefing-bot    # 로그 확인
 ```
 
 ---
@@ -132,14 +123,15 @@ pm2 logs slack-briefing-bot
 ### 할일 관리 (TASKS.md → Git PR)
 
 ```
-@bot slack_bot에 할일 추가해줘 — "API 에러 핸들링", "README 업데이트"
-@bot slack_bot에서 "API 에러 핸들링" 완료 처리해줘
-@bot fnf-process에 "기획서 작성" 완료로 3월 31자로 작성해줘
+@bot slack_bot에 할일 추가해줘 — API 에러 핸들링, README 업데이트
+@bot slack_bot에 task.md에 할일 작성해줘 제목은 코드 검증으로
+@bot slack_bot에서 코드 검증 완료 처리해줘
+@bot fnf-process에 피드백 루프 기획 완료로 3월 31자로 작성해줘
 ```
 
+- AI가 자연어를 분석하여 요청 유형/프로젝트/항목/날짜를 자동 추출
 - Git 연동된 프로젝트: 브랜치 생성 → 커밋 → 푸시 → PR 생성 → PR 링크 전송
 - Git 미연동 프로젝트: 로컬 파일 직접 수정
-- 키워드 매칭 우선, 실패 시 Claude AI로 자연어 의도 분석
 
 ### 일반 질문
 
@@ -151,23 +143,36 @@ pm2 logs slack-briefing-bot
 
 ---
 
+## 동작 흐름
+
+```
+@bot 멘션 수신
+  → 대화내역 DB 저장 + 스레드 history 조회
+  → Claude Haiku로 요청 분류
+    → task_add/task_done → TASKS.md 수정 → Git PR → Slack 링크 전송
+    → briefing           → 데이터 수집 → Sonnet 브리핑 → Block Kit 포맷팅
+    → general            → Sonnet 일반 응답
+```
+
+---
+
 ## 주요 기능
 
 | 기능 | 설명 |
 |------|------|
-| 업무 브리핑 | TASKS.md + GitHub Issues/PR 수집 → AI 분석 → 우선순위 브리핑 |
+| AI 요청 분류 | Haiku가 모든 멘션을 자동 분류 (task_add/task_done/briefing/general) |
+| 업무 브리핑 | TASKS.md + GitHub Issues/PR 수집 → Sonnet 분석 → 우선순위 브리핑 |
 | 할일 추가/완료 | Slack 멘션으로 TASKS.md 수정 → Git PR 자동 생성 |
-| 대화 맥락 유지 | 스레드 내 대화내역을 SQLite에 저장 (7일 보관, 최대 20턴) |
-| AI 의도 분석 | 키워드 매칭 실패 시 Claude Haiku로 자연어 분석 fallback |
+| 대화 맥락 유지 | 스레드 내 대화내역을 SQLite에 저장 (7일 보관, 최대 6턴) |
+| AI 날짜 파싱 | "3월 31자로" → 2026-03-31 자동 변환 |
 | 스킬셋/기능 안내 | 사전 정의된 정보 기반 응답 |
 | GitHub 캐싱 | API 응답 5분 메모리 캐시 |
 | 오류 Fallback | Claude API 실패 시 수집 데이터 원본 텍스트 전송 |
+| DB 장애 내성 | DB 에러 시 봇 크래시 없이 맥락 없이 진행 |
 
 ---
 
 ## TASKS.md 파싱 규칙
-
-프로젝트 폴더 내 `TASKS.md`에서 아래 형식을 인식합니다.
 
 ```markdown
 - [ ] 해야 할 작업
