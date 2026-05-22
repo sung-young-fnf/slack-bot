@@ -100,10 +100,22 @@ CLASSIFY_PROMPT = """당신은 Slack 봇의 요청 분류기입니다. 사용자
 """
 
 
+HAIKU_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+SONNET_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+
+def _bedrock_client() -> anthropic.AnthropicBedrock | None:
+    """AWS Bedrock 클라이언트 생성. 자격 증명 없으면 None 반환."""
+    if not os.environ.get("AWS_BEARER_TOKEN_BEDROCK"):
+        return None
+    region = os.environ.get("AWS_REGION", "us-west-2")
+    return anthropic.AnthropicBedrock(aws_region=region)
+
+
 def classify_request(text: str, available_projects: list[str], history: list[dict] | None = None) -> dict:
     """Claude AI로 요청 유형을 분류한다. 실패 시 기본값 반환."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    client = _bedrock_client()
+    if client is None:
         return {"type": "general", "project": None, "items": [], "date": None}
 
     projects_str = ", ".join(available_projects) if available_projects else "없음"
@@ -116,9 +128,8 @@ def classify_request(text: str, available_projects: list[str], history: list[dic
     messages.append({"role": "user", "content": text})
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=HAIKU_MODEL_ID,
             max_tokens=256,
             system=system,
             messages=messages,
@@ -186,8 +197,8 @@ def _build_user_prompt(projects: list[dict], user_text: str, bot_info: str = "")
 async def generate_briefing(
     projects: list[dict], user_text: str = "", bot_info: str = "", history: list[dict] | None = None
 ) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    client = _bedrock_client()
+    if client is None:
         return _fallback_briefing(projects)
 
     user_prompt = _build_user_prompt(projects, user_text, bot_info)
@@ -198,9 +209,8 @@ async def generate_briefing(
     messages.append({"role": "user", "content": user_prompt})
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=SONNET_MODEL_ID,
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=messages,

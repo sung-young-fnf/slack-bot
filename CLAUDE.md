@@ -40,7 +40,8 @@ src/
 | `SLACK_BOT_TOKEN` | Slack Bot Token (`xoxb-`) |
 | `SLACK_APP_TOKEN` | Slack App-Level Token (`xapp-`) |
 | `GITHUB_TOKEN` | GitHub Personal Access Token |
-| `ANTHROPIC_API_KEY` | Anthropic API Key |
+| `AWS_BEARER_TOKEN_BEDROCK` | AWS Bedrock API Key (Claude 호출용) |
+| `AWS_REGION` | AWS Bedrock 리전 (예: `us-west-2`) |
 | `DESKTOP_PATH` | 프로젝트들이 있는 로컬 경로 |
 | `GITHUB_USERNAME` | GitHub 사용자명 |
 

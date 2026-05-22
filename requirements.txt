@@ -1,4 +1,5 @@
 slack-bolt
 PyGithub
 anthropic
+boto3
 python-dotenv
