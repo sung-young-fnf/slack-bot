@@ -22,8 +22,13 @@ def _read_bot_info() -> str:
 
 
 def register_handlers(app: App):
-    @app.event("app_mention")
-    def handle_mention(event, say, client):
+    # 봇 자신의 user_id (멘션 dedup 용)
+    try:
+        bot_user_id = app.client.auth_test()["user_id"]
+    except Exception:
+        bot_user_id = None
+
+    def _process(event, client):
         channel = event["channel"]
         thread_ts = event.get("thread_ts") or event["ts"]
         text = re.sub(r"<@[A-Z0-9]+>", "", event.get("text", "")).strip()
@@ -98,3 +103,27 @@ def register_handlers(app: App):
                 ts=loading_ts,
                 text=f"브리핑 생성 중 오류가 발생했습니다: {e}",
             )
+
+    @app.event("app_mention")
+    def handle_mention(event, say, client):
+        _process(event, client)
+
+    @app.event("message")
+    def handle_message(event, client):
+        # 봇/시스템 메시지 무시
+        if event.get("bot_id") or event.get("subtype"):
+            return
+        text = event.get("text", "")
+        # 봇 멘션 포함된 메시지는 app_mention이 처리하므로 skip (중복 방지)
+        if bot_user_id and f"<@{bot_user_id}>" in text:
+            return
+        # 스레드 답글만 대상 (탑레벨 메시지는 응답 안 함)
+        thread_ts = event.get("thread_ts")
+        if not thread_ts:
+            return
+        # 봇이 이미 답변한 적 있는 스레드에서만 응답
+        channel = event["channel"]
+        history = get_thread_history(channel, thread_ts)
+        if not any(m.get("role") == "assistant" for m in history):
+            return
+        _process(event, client)
