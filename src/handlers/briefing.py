@@ -66,8 +66,8 @@ def register_handlers(app: App):
             db_id = extract_db_id(search_text)
             if not db_id:
                 result_text = "Notion DB ID를 메시지·스레드에서 못 찾았어요. 32자리 ID나 Notion URL을 포함해 다시 요청해주세요."
-            elif not os.environ.get("NOTION_TOKEN"):
-                result_text = "NOTION_TOKEN이 .env에 설정 안 돼 있어요. 관리자에게 설정 요청해주세요."
+            elif not (os.environ.get("ORBIT_MCP_URL") or os.environ.get("NOTION_TOKEN")):
+                result_text = "Notion 인증이 설정 안 돼 있어요 (ORBIT_MCP_URL 또는 NOTION_TOKEN 필요). 관리자에게 설정 요청해주세요."
             else:
                 client.chat_postMessage(
                     channel=channel, thread_ts=thread_ts,
