@@ -37,8 +37,10 @@
 - [x] claude.py - AI 분류 JSON 파싱 수정 (Haiku ```json 코드블록 처리) (2026-04-03)
 - [x] conversation_store.py - 대화 맥락 최대 턴 수 20 → 6으로 축소 (속도 개선) (2026-04-03)
 - [x] README.md, CLAUDE.md, structure.md 전면 업데이트 (2026-04-03)
-- [ ] handlers/code_task.py 구현 - 코드 작업 요청 핸들러 (계획 → 승인 → 실행 흐름)
-- [ ] ai/code_planner.py 구현 - 코드 분석 + 변경 계획 생성 프롬프트
-- [ ] executor/code_writer.py 구현 - Claude 생성 코드 → 파일 쓰기
-- [ ] storage/code_task_store.py 구현 - code_tasks 테이블 CRUD
-- [ ] 코드 수정 & PR 자동 생성 통합 테스트
+- [x] AWS Bedrock으로 Claude 호출 전환 (Anthropic API → Bedrock) (2026-05-22)
+- [x] .env / .env.example 환경변수 정리 및 문서화 (2026-05-22)
+- [x] PM2 설정 사용자 경로 수정 (AC0833 → AC1143) (2026-05-22)
+- [x] 브리핑 스캔 경로를 실제 작업 프로젝트 폴더로 교정 (2026-05-22)
+- [x] /tasks 슬래시 커맨드 + 전역 지침으로 TASKS.md 체크박스 형식 강제 (2026-05-22)
+- [x] 멘션 없이 스레드 후속 답글에도 응답하도록 확장 (2026-05-28)
+- [x] 스레드 응답 추적을 전체 이력 기준으로 보강 (작성자 무관 항상 응답) (2026-05-28)
