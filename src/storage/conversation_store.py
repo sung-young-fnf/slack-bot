@@ -7,7 +7,7 @@ DB_DIR = Path(__file__).parent.parent.parent / "data"
 DB_PATH = DB_DIR / "conversations.db"
 
 MAX_TURNS = 6
-MAX_MESSAGE_LENGTH = 2000
+MAX_MESSAGE_LENGTH = 8000
 
 _conn: sqlite3.Connection | None = None
 

@@ -42,6 +42,9 @@ src/
 | `GITHUB_TOKEN` | GitHub Personal Access Token |
 | `AWS_BEARER_TOKEN_BEDROCK` | AWS Bedrock API Key (Claude 호출용) |
 | `AWS_REGION` | AWS Bedrock 리전 (예: `us-west-2`) |
+| `ORBIT_MCP_URL` | Orbit notion-mcp 엔드포인트 (선택, Notion 작성용 권장 경로) |
+| `NOTION_TOKEN` | 본인 Internal Integration Secret (선택, Orbit 미사용 시 대안) |
+| `NOTION_ROW_TITLE` | Notion DB row 제목 (예: `Castle / castle.alter`) |
 | `DESKTOP_PATH` | 프로젝트들이 있는 로컬 경로 |
 | `GITHUB_USERNAME` | GitHub 사용자명 |
 

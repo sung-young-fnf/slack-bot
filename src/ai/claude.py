@@ -77,14 +77,20 @@ CLASSIFY_PROMPT = """당신은 Slack 봇의 요청 분류기입니다. 사용자
 2. "task_done" — 사용자가 TASKS.md의 기존 할일을 완료 처리하길 원함
    예시: "끝났어", "다 했어", "완료로 처리해줘", "완료해줘", "체크해줘"
 
-3. "briefing" — 업무 현황, 할일 브리핑, 진행상황 요약 요청
-   핵심: 현재 상태를 "보여줘/알려줘/정리해줘"이고, 새로 추가하거나 변경하는 게 아닌 경우
+3. "notion_update" — 사용자가 Notion DB에 본인 업무 현황을 row로 추가/정리하길 원함
+   핵심: "Notion", "노션", "DB", "데이터베이스"와 함께 "추가", "정리", "적어줘", "작성", "row 만들어", "row 추가", "업데이트" 등의 동작
+   메시지나 스레드 컨텍스트에 32자리 Notion DB ID나 Notion URL이 있을 때 의미가 있음
+   예시: "Notion DB에 정리해줘", "위 DB에 내 업무 추가해줘", "노션에 row 만들어줘", "Notion에 적어줘", "관리자 알터가 알려준 DB에 업데이트"
+
+4. "briefing" — 업무 현황, 할일 브리핑, 진행상황 요약 요청
+   핵심: 현재 상태를 "보여줘/알려줘/정리해줘"이고, 새로 추가하거나 변경하는 게 아닌 경우. Notion 언급이 없어야 함.
    예시: "오늘 할일 브리핑", "업무 정리해줘", "진행상황 알려줘", "할일 뭐 있어?"
 
-4. "general" — 위 어디에도 해당하지 않는 일반 질문/대화
+5. "general" — 위 어디에도 해당하지 않는 일반 질문/대화
    예시: "파이썬에서 데코레이터가 뭐야?", "스킬셋 알려줘", "기능 소개해줘"
 
 [중요] "task.md에 작성", "할일 작성", "할일 추가", "할일 등록" 등의 표현이 있으면 반드시 "task_add"입니다. "general"이 아닙니다.
+[중요] "Notion" 또는 "노션"과 함께 "추가/정리/적어줘/작성/업데이트" 표현이 있으면 "notion_update"입니다. "briefing"이 아닙니다.
 
 [프로젝트 목록]
 {projects}
@@ -96,7 +102,7 @@ CLASSIFY_PROMPT = """당신은 Slack 봇의 요청 분류기입니다. 사용자
 - "XXX이랑 YYY 추가해줘" → items: ["XXX", "YYY"]
 
 [응답 형식 — 반드시 JSON만 반환. 설명 없이 JSON만.]
-{{"type": "task_add" | "task_done" | "briefing" | "general", "project": "프로젝트명 또는 null", "items": ["항목1"], "date": "YYYY-MM-DD 또는 null"}}
+{{"type": "task_add" | "task_done" | "notion_update" | "briefing" | "general", "project": "프로젝트명 또는 null", "items": ["항목1"], "date": "YYYY-MM-DD 또는 null"}}
 """
 
 
@@ -211,8 +217,60 @@ async def generate_briefing(
     try:
         message = client.messages.create(
             model=SONNET_MODEL_ID,
-            max_tokens=1024,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
+            messages=messages,
+        )
+        return message.content[0].text
+    except Exception as e:
+        return _fallback_briefing(projects, error=str(e))
+
+
+NOTION_STATUS_PROMPT = """당신은 개발자의 한 주 업무를 Notion 페이지에 정리하는 어시스턴트입니다.
+제공된 프로젝트 데이터를 보고 한국어 markdown만 출력하세요. 설명/인사 금지, markdown만.
+
+[형식 — 정확히 이 4개 섹션, 순서 고정]
+## 진행 중
+- 항목 (한 줄, 핵심만)
+
+## 완료
+- 항목 (YYYY-MM-DD)
+
+## 예정 / blocked
+- 항목
+
+## 비고
+- 항목
+
+[규칙]
+- 항목은 한 줄로 간결하게. 불필요한 수식어 금지.
+- "완료" 섹션은 이번주(월~일) 완료된 것만 포함. 날짜 필수.
+- 데이터 없는 섹션은 "- 특이사항 없음" 한 줄.
+- 카테고리는 `[카테고리]` 접두사로 표현 가능.
+- 마크다운 문법(헤딩/리스트) 외 장식 금지.
+"""
+
+
+async def generate_notion_status(
+    projects: list[dict], history: list[dict] | None = None
+) -> str:
+    """Notion 페이지 본문용 4섹션 markdown 생성."""
+    client = _bedrock_client()
+    if client is None:
+        return _fallback_briefing(projects)
+
+    user_prompt = _build_user_prompt(projects, "이번주 업무 현황을 Notion 4섹션 형식으로 정리해줘", "")
+
+    messages = []
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": user_prompt})
+
+    try:
+        message = client.messages.create(
+            model=SONNET_MODEL_ID,
+            max_tokens=4096,
+            system=NOTION_STATUS_PROMPT,
             messages=messages,
         )
         return message.content[0].text

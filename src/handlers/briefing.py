@@ -6,10 +6,11 @@ from slack_bolt import App
 
 from collectors.md_collector import collect_md
 from collectors.github_collector import collect_github
-from ai.claude import generate_briefing, classify_request
+from ai.claude import generate_briefing, classify_request, generate_notion_status
 from formatter.block_kit import build_briefing_blocks
 from storage.conversation_store import save_message, get_thread_history, maybe_cleanup, thread_has_assistant
 from handlers.task_manager import handle_task_management, _list_projects
+from integrations.notion_writer import extract_db_id, add_status_row
 
 CLAUDE_MD_PATH = Path(__file__).parent.parent.parent / "CLAUDE.md"
 
@@ -50,6 +51,57 @@ def register_handlers(app: App):
         # --- 할일 관리 (task_add / task_done) ---
         if req_type in ("task_add", "task_done"):
             result_text = handle_task_management(text, desktop_path, history, classification)
+            save_message(channel, thread_ts, "assistant", result_text)
+            client.chat_postMessage(
+                channel=channel,
+                thread_ts=thread_ts,
+                text=result_text,
+            )
+            return
+
+        # --- Notion DB row 추가 (notion_update) ---
+        if req_type == "notion_update":
+            # DB ID는 현재 메시지 + 스레드 이력에서 검색 (관리자 알터가 동적으로 알려줌)
+            search_text = text + "\n" + "\n".join(m.get("content", "") for m in history)
+            db_id = extract_db_id(search_text)
+            if not db_id:
+                result_text = "Notion DB ID를 메시지·스레드에서 못 찾았어요. 32자리 ID나 Notion URL을 포함해 다시 요청해주세요."
+            elif not os.environ.get("NOTION_TOKEN"):
+                result_text = "NOTION_TOKEN이 .env에 설정 안 돼 있어요. 관리자에게 설정 요청해주세요."
+            else:
+                client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=f"Notion DB에 정리 중... (DB: {db_id[:8]}...)",
+                )
+                # 데이터 수집 + Sonnet으로 4섹션 markdown 생성
+                async def _build_notion_body():
+                    projects = await collect_md(desktop_path)
+                    projects = await collect_github(projects)
+                    return await generate_notion_status(projects, history)
+
+                try:
+                    loop = asyncio.new_event_loop()
+                    md_body = loop.run_until_complete(_build_notion_body())
+                    loop.close()
+                except Exception as e:
+                    md_body = ""
+                    err_during_build = str(e)
+                else:
+                    err_during_build = None
+
+                if err_during_build:
+                    result_text = f"본문 생성 중 오류: {err_during_build}"
+                else:
+                    row_title = os.environ.get("NOTION_ROW_TITLE", "castle.alter")
+                    url, err = add_status_row(db_id, row_title, md_body)
+                    if err:
+                        result_text = (
+                            f"Notion row 추가 실패: {err}\n"
+                            "(DB에 integration이 연결돼 있는지 확인해주세요. DB → ⋯ → Connections → integration 추가)"
+                        )
+                    else:
+                        result_text = f"Notion DB에 row 추가 완료 👉 {url}"
+
             save_message(channel, thread_ts, "assistant", result_text)
             client.chat_postMessage(
                 channel=channel,

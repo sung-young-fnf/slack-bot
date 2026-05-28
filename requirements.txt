@@ -2,4 +2,6 @@ slack-bolt
 PyGithub
 anthropic
 boto3
+notion-client
+mcp
 python-dotenv
