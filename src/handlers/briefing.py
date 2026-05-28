@@ -22,12 +22,6 @@ def _read_bot_info() -> str:
 
 
 def register_handlers(app: App):
-    # 봇 자신의 user_id (멘션 dedup 용)
-    try:
-        bot_user_id = app.client.auth_test()["user_id"]
-    except Exception:
-        bot_user_id = None
-
     def _process(event, client):
         channel = event["channel"]
         thread_ts = event.get("thread_ts") or event["ts"]
@@ -114,8 +108,11 @@ def register_handlers(app: App):
         if event.get("bot_id") or event.get("subtype"):
             return
         text = event.get("text", "")
-        # 봇 멘션 포함된 메시지는 app_mention이 처리하므로 skip (중복 방지)
-        if bot_user_id and f"<@{bot_user_id}>" in text:
+        # @멘션이 하나라도 있으면 처리하지 않음:
+        #  - 봇 자신 멘션 → app_mention이 처리 (중복 방지)
+        #  - 다른 사람/봇 멘션(@Kitty.Alter 등) → 그쪽에게 한 말이므로 끼어들지 않음
+        # 멘션 없는 순수 후속 답글에만 응답한다.
+        if re.search(r"<@[A-Z0-9]+>", text):
             return
         # 스레드 답글만 대상 (탑레벨 메시지는 응답 안 함)
         thread_ts = event.get("thread_ts")
