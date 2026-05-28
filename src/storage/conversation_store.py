@@ -70,6 +70,24 @@ def get_thread_history(channel_id: str, thread_ts: str) -> list[dict]:
         return []  # DB 실패 시 맥락 없이 진행
 
 
+def thread_has_assistant(channel_id: str, thread_ts: str) -> bool:
+    """해당 스레드에 봇(assistant) 응답이 한 번이라도 있었는지 (전체 이력 기준).
+
+    get_thread_history는 최근 N턴만 보지만, 이 함수는 메시지 수와 무관하게
+    스레드 전체에서 봇 참여 여부만 판별한다. 멘션 없이 스레드 답글에 응답할지
+    결정할 때 사용.
+    """
+    try:
+        conn = _get_conn()
+        row = conn.execute(
+            "SELECT 1 FROM conversations WHERE channel_id = ? AND thread_ts = ? AND role = 'assistant' LIMIT 1",
+            (channel_id, thread_ts),
+        ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
 def cleanup_old_conversations(days: int = 7) -> int:
     try:
         conn = _get_conn()

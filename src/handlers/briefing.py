@@ -8,7 +8,7 @@ from collectors.md_collector import collect_md
 from collectors.github_collector import collect_github
 from ai.claude import generate_briefing, classify_request
 from formatter.block_kit import build_briefing_blocks
-from storage.conversation_store import save_message, get_thread_history, maybe_cleanup
+from storage.conversation_store import save_message, get_thread_history, maybe_cleanup, thread_has_assistant
 from handlers.task_manager import handle_task_management, _list_projects
 
 CLAUDE_MD_PATH = Path(__file__).parent.parent.parent / "CLAUDE.md"
@@ -121,9 +121,9 @@ def register_handlers(app: App):
         thread_ts = event.get("thread_ts")
         if not thread_ts:
             return
-        # 봇이 이미 답변한 적 있는 스레드에서만 응답
+        # 봇이 한 번이라도 답한 스레드면, 작성자(owner/타인) 무관하게 항상 응답.
+        # 전체 이력 기준이라 메시지가 많이 쌓여도 추적이 끊기지 않음.
         channel = event["channel"]
-        history = get_thread_history(channel, thread_ts)
-        if not any(m.get("role") == "assistant" for m in history):
+        if not thread_has_assistant(channel, thread_ts):
             return
         _process(event, client)
