@@ -235,7 +235,7 @@ async def generate_briefing(
         return _fallback_briefing(projects, error=str(e))
 
 
-NOTION_STATUS_PROMPT = """당신은 개발자의 한 주 업무를 Notion 페이지에 정리하는 어시스턴트입니다.
+NOTION_STATUS_PROMPT = """당신은 개발자의 업무를 Notion 페이지에 정리하는 어시스턴트입니다.
 제공된 프로젝트 데이터를 보고 한국어 markdown만 출력하세요. 설명/인사 없이 markdown만.
 
 [작성 방향]
