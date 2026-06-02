@@ -46,3 +46,8 @@
 - [x] 스레드 응답 추적을 전체 이력 기준으로 보강 (작성자 무관 항상 응답) (2026-05-28)
 - [x] 봇 응답·DB 메시지 길이 제한 해제 (truncation 방지) (2026-05-28)
 - [x] Notion 작성 기능 추가 — Orbit MCP / 직접 API 자동 라우팅, DB row + Page append 지원 (2026-05-28)
+- [x] slack-bot 기능을 Hermes Slack skill로 이관 (2026-06-02)
+- [x] Hermes SKILL.md에 기본 프로젝트 경로 지정 (2026-06-02)
+- [x] 프로젝트 설명 참고 경로로 castle_wiki 추가 — 질문 유형별 분류에 프로젝트 설명 요청 루트 추가 (2026-06-02)
+- [x] 요청 분류 규칙을 Hermes SKILL.md에 명시화 — Notion 작성/브리핑/프로젝트 설명/일반 응답 분류 기준 추가 (2026-06-02)
+- [x] Slack Gateway 자동 응답용 Hermes 프로필 분리(2026-06-02)
