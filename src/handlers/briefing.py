@@ -66,8 +66,8 @@ def register_handlers(app: App):
             db_id = extract_db_id(search_text)
             if not db_id:
                 result_text = "Notion DB ID를 메시지·스레드에서 못 찾았어요. 32자리 ID나 Notion URL을 포함해 다시 요청해주세요."
-            elif not os.environ.get("NOTION_TOKEN"):
-                result_text = "NOTION_TOKEN이 .env에 설정 안 돼 있어요. 관리자에게 설정 요청해주세요."
+            elif not (os.environ.get("ORBIT_MCP_URL") or os.environ.get("NOTION_TOKEN")):
+                result_text = "Notion 인증이 설정 안 돼 있어요 (ORBIT_MCP_URL 또는 NOTION_TOKEN 필요). 관리자에게 설정 요청해주세요."
             else:
                 client.chat_postMessage(
                     channel=channel, thread_ts=thread_ts,
@@ -137,10 +137,13 @@ def register_handlers(app: App):
 
             blocks = build_briefing_blocks(briefing_text, projects, is_briefing)
 
+            # Slack의 text 필드는 (a) notification preview (b) blocks 미지원 클라이언트의 fallback
+                # (c) 다른 봇/에이전트가 API로 읽을 때 흔히 참조. 따라서 전체 본문을 그대로 넣어
+                # 외부 reader가 truncation 없이 컨텍스트를 받도록 한다. Slack 한도 40,000자.
             client.chat_update(
                 channel=channel,
                 ts=loading_ts,
-                text=briefing_text[:100] if not is_briefing else "오늘의 업무 브리핑",
+                text=briefing_text[:40000],
                 blocks=blocks,
             )
         except Exception as e:

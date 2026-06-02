@@ -183,6 +183,17 @@ def write_to_target(notion_id: str, title: str, markdown: str) -> tuple[str, str
     return _append_to_page(notion, notion_id, title, blocks)
 
 
+def _is_notion_error(resp: dict | None) -> str | None:
+    """Notion API 응답이 에러면 사람 읽기 좋은 메시지, 정상이면 None."""
+    if not isinstance(resp, dict):
+        return None
+    if resp.get("object") == "error":
+        code = resp.get("code", "unknown")
+        msg = resp.get("message", "")
+        return f"{code}: {msg}"
+    return None
+
+
 async def _write_via_orbit(notion_id: str, title: str, blocks: list[dict]) -> tuple[str, str | None]:
     """Orbit MCP 경유: DB면 row 생성, Page면 append. 자동 감지."""
     # DB 시도
@@ -190,8 +201,9 @@ async def _write_via_orbit(notion_id: str, title: str, blocks: list[dict]) -> tu
         db = await orbit_mcp.retrieve_database(notion_id)
     except Exception:
         db = None
+    db_err = _is_notion_error(db)
 
-    if db and "properties" in db:
+    if db and not db_err and "properties" in db:
         title_prop = _find_title_prop(db.get("properties", {}))
         if not title_prop:
             return ("", "대상 DB에 title 프로퍼티가 없어요.")
@@ -201,7 +213,13 @@ async def _write_via_orbit(notion_id: str, title: str, blocks: list[dict]) -> tu
                 properties={title_prop: {"title": _rt(title)}},
                 children=blocks[:100],
             )
-            return (result.get("url", ""), None)
+            r_err = _is_notion_error(result)
+            if r_err:
+                return ("", f"Orbit DB row 생성 거부됨 — {r_err}")
+            url = result.get("url", "")
+            if not url:
+                return ("", f"Orbit DB row 응답에 URL 없음 (raw: {str(result)[:200]})")
+            return (url, None)
         except Exception as e:
             return ("", f"Orbit MCP DB row 생성 실패: {e}")
 
@@ -209,16 +227,24 @@ async def _write_via_orbit(notion_id: str, title: str, blocks: list[dict]) -> tu
     try:
         page = await orbit_mcp.retrieve_page(notion_id)
     except Exception as e:
-        return ("", f"Orbit MCP로 DB/Page 둘 다 못 찾음: {e}")
+        return ("", f"Orbit MCP로 Page 조회 실패: {e}")
+    p_err = _is_notion_error(page)
+    if p_err:
+        # DB도 Page도 모두 에러 — integration이 이 페이지에 공유 안 됐을 가능성 큼
+        return ("", f"대상 페이지를 못 찾거나 권한 부족 — {p_err}. "
+                   f"Notion에서 해당 페이지 ⋯ → 연결(Connections) → Orbit 추가했는지 확인해주세요.")
 
     heading = {
         "object": "block", "type": "heading_2",
         "heading_2": {"rich_text": _rt(title)},
     }
     try:
-        await orbit_mcp.append_block_children(
+        append_result = await orbit_mcp.append_block_children(
             notion_id, children=([heading] + blocks)[:100],
         )
+        a_err = _is_notion_error(append_result)
+        if a_err:
+            return ("", f"Orbit 페이지 append 거부됨 — {a_err}")
         return (page.get("url", ""), None)
     except Exception as e:
         return ("", f"Orbit MCP 페이지 append 실패: {e}")
